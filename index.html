@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeChat Windows Versions | 微信 Windows 历史版本</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            background: #0d1117;
+            color: #00ff00;
+            line-height: 1.6;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: rgba(0, 255, 0, 0.05);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        .ascii-art {
+            font-size: 12px;
+            line-height: 1.2;
+            color: #00ff00;
+            white-space: pre;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        h1 {
+            color: #00ff00;
+            font-size: 2em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+        }
+
+        .subtitle {
+            color: #00ffff;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .info {
+            color: #ffff00;
+            font-size: 0.85em;
+            margin-top: 15px;
+            padding: 10px;
+            border-left: 3px solid #ffff00;
+            background: rgba(255, 255, 0, 0.05);
+        }
+
+        .info a {
+            color: #00ffff;
+            text-decoration: none;
+            border-bottom: 1px dotted #00ffff;
+        }
+
+        .info a:hover {
+            color: #00ff00;
+            border-bottom-color: #00ff00;
+        }
+
+        .terminal {
+            border: 2px solid #00ff00;
+            background: #000000;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+            position: relative;
+        }
+
+        .terminal::before {
+            content: '>_';
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            color: #00ff00;
+            font-size: 0.8em;
+        }
+
+        .prompt {
+            color: #00ff00;
+        }
+
+        .command {
+            color: #00ffff;
+        }
+
+        .output {
+            color: #ffffff;
+            margin-top: 10px;
+        }
+
+        .loading {
+            color: #ffff00;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+
+        .release-list {
+            margin-top: 30px;
+        }
+
+        .release-item {
+            border: 1px solid #00ff00;
+            padding: 15px;
+            margin: 15px 0;
+            background: rgba(0, 255, 0, 0.03);
+            transition: all 0.3s;
+        }
+
+        .release-item:hover {
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            transform: translateX(5px);
+        }
+
+        .version {
+            color: #00ffff;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .meta {
+            color: #888888;
+            font-size: 0.85em;
+            margin: 5px 0;
+        }
+
+        .meta strong {
+            color: #ffff00;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px 10px 10px 0;
+            background: #00ff00;
+            color: #000000;
+            text-decoration: none;
+            font-weight: bold;
+            border: 2px solid #00ff00;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .download-btn:hover {
+            background: #000000;
+            color: #00ff00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+        }
+
+        .sha256 {
+            font-family: monospace;
+            font-size: 0.8em;
+            color: #888888;
+            word-break: break-all;
+            margin-top: 5px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            padding: 20px;
+            border-top: 1px solid #00ff00;
+            text-align: center;
+            color: #888888;
+            font-size: 0.85em;
+        }
+
+        .footer a {
+            color: #00ffff;
+            text-decoration: none;
+        }
+
+        .error {
+            color: #ff0000;
+            border: 1px solid #ff0000;
+            padding: 15px;
+            margin: 20px 0;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            border: 1px solid #00ff00;
+            padding: 10px 15px;
+            background: rgba(0, 255, 0, 0.05);
+        }
+
+        .stat-label {
+            color: #888888;
+            font-size: 0.8em;
+        }
+
+        .stat-value {
+            color: #00ff00;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .ascii-art {
+                font-size: 8px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="ascii-art">
+██╗    ██╗███████╗ ██████╗██╗  ██╗ █████╗ ████████╗
+██║    ██║██╔════╝██╔════╝██║  ██║██╔══██╗╚══██╔══╝
+██║ █╗ ██║█████╗  ██║     ███████║███████║   ██║   
+██║██╗██║██╔══╝  ██║     ██╔══██║██╔══██║   ██║   
+╚███╔███╔╝███████╗╚██████╗██║  ██║██║  ██║   ██║   
+ ╚══╝╚══╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   
+            </div>
+            <h1>WeChat Windows Versions</h1>
+            <div class="subtitle">微信 Windows 历史版本下载中心</div>
+            <div class="info">
+                <strong>Author:</strong> 王仕宇 (Wang Shiyu)<br>
+                <strong>自媒体:</strong> 
+                <a href="https://github.com/Rodert" target="_blank">JavaPub</a> | 
+                <a href="#" target="_blank">仕宇2046</a><br>
+                <strong>Repository:</strong> 
+                <a href="https://github.com/Rodert/wechat-win-versions" target="_blank">GitHub</a> | 
+                <a href="https://github.com/Rodert/wechat-mac-versions" target="_blank">Mac Versions</a>
+            </div>
+        </div>
+
+        <div class="terminal">
+            <div class="prompt">$</div>
+            <div class="command">curl -s https://api.github.com/repos/Rodert/wechat-win-versions/releases</div>
+            <div class="output" id="loading">
+                <span class="loading">正在获取版本列表...</span>
+            </div>
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-label">Total Releases</div>
+                <div class="stat-value" id="total-releases">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Latest Version</div>
+                <div class="stat-value" id="latest-version">-</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Last Updated</div>
+                <div class="stat-value" id="last-updated">-</div>
+            </div>
+        </div>
+
+        <div class="release-list" id="release-list"></div>
+
+        <div class="footer">
+            <div>Powered by GitHub Pages | API: GitHub Releases</div>
+            <div style="margin-top: 10px;">
+                <a href="https://github.com/Rodert/wechat-win-versions" target="_blank">View on GitHub</a> | 
+                <a href="https://weixin.qq.com/cgi-bin/readtemplate?lang=zh_CN&t=weixin_faq_list&head=true" target="_blank">官方更新日志</a>
+            </div>
+            <div style="margin-top: 10px; color: #555555;">
+                为避免项目&数据被和谐，且用且珍惜。
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const repo = 'Rodert/wechat-win-versions';
+        const apiUrl = `https://api.github.com/repos/${repo}/releases`;
+
+        async function fetchReleases() {
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const releases = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('stats').style.display = 'flex';
+                
+                if (releases.length === 0) {
+                    document.getElementById('release-list').innerHTML = 
+                        '<div class="error">暂无可用版本</div>';
+                    return;
+                }
+
+                // 更新统计信息
+                document.getElementById('total-releases').textContent = releases.length;
+                if (releases[0]) {
+                    const latest = releases[0];
+                    const version = latest.tag_name.replace('v', '');
+                    document.getElementById('latest-version').textContent = version;
+                    const date = new Date(latest.published_at);
+                    document.getElementById('last-updated').textContent = 
+                        date.toLocaleDateString('zh-CN');
+                }
+
+                // 渲染版本列表
+                renderReleases(releases);
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 
+                    `<div class="error">错误: ${error.message}</div>`;
+                console.error('Error fetching releases:', error);
+            }
+        }
+
+        function renderReleases(releases) {
+            const listContainer = document.getElementById('release-list');
+            listContainer.innerHTML = '';
+
+            releases.forEach(release => {
+                const version = release.tag_name.replace('v', '');
+                const date = new Date(release.published_at);
+                const formattedDate = date.toLocaleString('zh-CN');
+                
+                // 解析 release body 获取详细信息
+                const body = release.body || '';
+                const destVersion = extractValue(body, 'DestVersion');
+                const sha256 = extractValue(body, 'Sha256');
+                const updateTime = extractValue(body, 'UpdateTime');
+                const downloadFrom = extractValue(body, 'DownloadFrom');
+
+                // 查找 .exe 文件
+                const exeAsset = release.assets.find(asset => 
+                    asset.name.endsWith('.exe')
+                );
+
+                const releaseItem = document.createElement('div');
+                releaseItem.className = 'release-item';
+                
+                releaseItem.innerHTML = `
+                    <div class="version">v${version}</div>
+                    ${destVersion ? `<div class="meta"><strong>DestVersion:</strong> ${destVersion}</div>` : ''}
+                    ${updateTime ? `<div class="meta"><strong>UpdateTime:</strong> ${updateTime}</div>` : ''}
+                    <div class="meta"><strong>Published:</strong> ${formattedDate}</div>
+                    ${sha256 ? `<div class="sha256"><strong>SHA256:</strong> ${sha256}</div>` : ''}
+                    ${downloadFrom ? `<div class="meta"><strong>Source:</strong> <a href="${downloadFrom}" target="_blank" style="color: #00ffff;">${downloadFrom}</a></div>` : ''}
+                    ${exeAsset ? `
+                        <a href="${exeAsset.browser_download_url}" class="download-btn" download>
+                            ⬇ Download (${formatBytes(exeAsset.size)})
+                        </a>
+                    ` : ''}
+                    <a href="${release.html_url}" target="_blank" class="download-btn" style="background: #000000; color: #00ff00;">
+                        📦 View Release
+                    </a>
+                `;
+                
+                listContainer.appendChild(releaseItem);
+            });
+        }
+
+        function extractValue(text, key) {
+            const regex = new RegExp(`${key}:\\s*([^\\n]+)`, 'i');
+            const match = text.match(regex);
+            return match ? match[1].trim() : null;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        // 页面加载时获取数据
+        fetchReleases();
+    </script>
+</body>
+</html>
+
