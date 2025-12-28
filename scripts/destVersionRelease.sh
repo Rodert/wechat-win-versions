@@ -109,9 +109,20 @@ function extract_version() {
     # 方法1: 尝试从文件夹名中提取版本号（新版本格式：[x.x.x.x]）
     dest_version=$(find ${temp_path}/temp -maxdepth 1 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
     
-    # 方法2: 如果方法1失败，尝试从 improve.xml 中提取（旧版本方法）
+    # 方法2: 如果方法1失败，检查是否有 install.7z 文件，需要进一步解压
+    local temp2_created=false
+    if [ -z "$dest_version" ] && [ -f "${temp_path}/temp/install.7z" ]; then
+        >&2 echo -e "\033[1;33mMethod 1 failed, trying method 2: extract install.7z...\033[0m"
+        mkdir -p ${temp_path}/temp2
+        temp2_created=true
+        7z x ${temp_path}/temp/install.7z -o${temp_path}/temp2
+        # 从解压后的文件中查找版本号文件夹
+        dest_version=$(find ${temp_path}/temp2 -maxdepth 1 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
+    fi
+    
+    # 方法3: 如果方法2也失败，尝试从 improve.xml 中提取（旧版本方法）
     if [ -z "$dest_version" ]; then
-        >&2 echo -e "\033[1;33mMethod 1 failed, trying method 2: extract from improve.xml...\033[0m"
+        >&2 echo -e "\033[1;33mMethod 2 failed, trying method 3: extract from improve.xml...\033[0m"
         local outfile=$(7z l ${temp_path}/WeChatSetup.exe | grep improve.xml | awk 'NR ==1 { print $NF }')
         if [ -n "$outfile" ]; then
             7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp "$outfile" 2>/dev/null || true
@@ -119,6 +130,18 @@ function extract_version() {
                 dest_version=$(awk '/MinVersion/{ print $2 }' "${temp_path}/temp/$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
             fi
         fi
+        # 如果在 install.7z 解压后的目录中查找 improve.xml
+        if [ -z "$dest_version" ] && [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
+            outfile=$(find ${temp_path}/temp2 -name "improve.xml" | head -1)
+            if [ -n "$outfile" ] && [ -f "$outfile" ]; then
+                dest_version=$(awk '/MinVersion/{ print $2 }' "$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
+            fi
+        fi
+    fi
+    
+    # 清理临时目录
+    if [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
+        rm -rf ${temp_path}/temp2
     fi
     
     # 如果还是失败，报错
@@ -126,6 +149,11 @@ function extract_version() {
         >&2 echo -e "\033[1;31mFailed to extract version number!\033[0m"
         >&2 echo -e "\033[1;33mDebug: Listing extracted files:\033[0m"
         >&2 ls -la ${temp_path}/temp/ || true
+        if [ -d "${temp_path}/temp2" ]; then
+            >&2 echo -e "\033[1;33mDebug: Listing temp2 files:\033[0m"
+            >&2 ls -la ${temp_path}/temp2/ || true
+            rm -rf ${temp_path}/temp2
+        fi
         exit 1
     fi
     
