@@ -116,13 +116,32 @@ function extract_version() {
         mkdir -p ${temp_path}/temp2
         temp2_created=true
         7z x ${temp_path}/temp/install.7z -o${temp_path}/temp2
-        # 从解压后的文件中查找版本号文件夹
-        dest_version=$(find ${temp_path}/temp2 -maxdepth 1 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
+        # 从解压后的文件中查找版本号文件夹（在所有层级中查找，不仅仅是第一层）
+        dest_version=$(find ${temp_path}/temp2 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
+        # 如果还没找到，尝试查找所有目录名包含版本号格式的
+        if [ -z "$dest_version" ]; then
+            dest_version=$(find ${temp_path}/temp2 -type d | grep -oE '\[?[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]?' | sed -e 's/\[//g' -e 's/\]//g' | head -1)
+        fi
+        # 调试输出：列出 temp2 目录结构
+        if [ -z "$dest_version" ]; then
+            >&2 echo -e "\033[1;33mDebug: Listing temp2 directory structure:\033[0m"
+            >&2 find ${temp_path}/temp2 -maxdepth 3 -type d | head -20 || true
+        fi
     fi
     
-    # 方法3: 如果方法2也失败，尝试从 improve.xml 中提取（旧版本方法）
+    # 方法3: 如果方法2也失败，尝试从 7z 文件列表中查找包含版本号的路径
     if [ -z "$dest_version" ]; then
-        >&2 echo -e "\033[1;33mMethod 2 failed, trying method 3: extract from improve.xml...\033[0m"
+        >&2 echo -e "\033[1;33mMethod 2 failed, trying method 3: search version in 7z file list...\033[0m"
+        # 从 7z 列表中查找包含版本号格式的路径
+        local version_path=$(7z l ${temp_path}/WeChatSetup.exe | grep -oE '\[?[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]?' | head -1)
+        if [ -n "$version_path" ]; then
+            dest_version=$(echo "$version_path" | sed -e 's/\[//g' -e 's/\]//g')
+        fi
+    fi
+    
+    # 方法4: 如果方法3也失败，尝试从 improve.xml 中提取（旧版本方法）
+    if [ -z "$dest_version" ]; then
+        >&2 echo -e "\033[1;33mMethod 3 failed, trying method 4: extract from improve.xml...\033[0m"
         local outfile=$(7z l ${temp_path}/WeChatSetup.exe | grep improve.xml | awk 'NR ==1 { print $NF }')
         if [ -n "$outfile" ]; then
             7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp "$outfile" 2>/dev/null || true
@@ -130,28 +149,31 @@ function extract_version() {
                 dest_version=$(awk '/MinVersion/{ print $2 }' "${temp_path}/temp/$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
             fi
         fi
-        # 如果在 install.7z 解压后的目录中查找 improve.xml
+        # 如果在 install.7z 解压后的目录中查找 improve.xml 或其他 XML 文件
         if [ -z "$dest_version" ] && [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
-            outfile=$(find ${temp_path}/temp2 -name "improve.xml" | head -1)
+            outfile=$(find ${temp_path}/temp2 -name "*.xml" | head -1)
             if [ -n "$outfile" ] && [ -f "$outfile" ]; then
                 dest_version=$(awk '/MinVersion/{ print $2 }' "$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
             fi
         fi
     fi
     
-    # 清理临时目录
-    if [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
+    # 清理临时目录（在错误处理之前不要清理，以便调试）
+    # 如果成功提取到版本号，清理 temp2
+    if [ -n "$dest_version" ] && [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
         rm -rf ${temp_path}/temp2
     fi
     
     # 如果还是失败，报错
     if [ -z "$dest_version" ]; then
         >&2 echo -e "\033[1;31mFailed to extract version number!\033[0m"
-        >&2 echo -e "\033[1;33mDebug: Listing extracted files:\033[0m"
+        >&2 echo -e "\033[1;33mDebug: Listing extracted files in temp:\033[0m"
         >&2 ls -la ${temp_path}/temp/ || true
         if [ -d "${temp_path}/temp2" ]; then
-            >&2 echo -e "\033[1;33mDebug: Listing temp2 files:\033[0m"
-            >&2 ls -la ${temp_path}/temp2/ || true
+            >&2 echo -e "\033[1;33mDebug: Listing temp2 directory tree (first 50 lines):\033[0m"
+            >&2 find ${temp_path}/temp2 -type f -o -type d | head -50 || true
+            >&2 echo -e "\033[1;33mDebug: Looking for version patterns in temp2:\033[0m"
+            >&2 find ${temp_path}/temp2 -type d | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -10 || true
             rm -rf ${temp_path}/temp2
         fi
         exit 1
