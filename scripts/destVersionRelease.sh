@@ -21,11 +21,16 @@ function get_download_link_from_official() {
     
     # 提取 id="downloadButton" 的 href 属性值（64位版本）
     # 使用 sed -E 提取，兼容 macOS 和 Linux
-    local link=$(echo "$page_content" | grep 'id="downloadButton"' | sed -E 's/.*id="downloadButton"[^>]*href="([^"]*)".*/\1/' | head -1)
+    local link=$(echo "$page_content" | grep -i 'id="downloadButton"' | sed -E 's/.*id="downloadButton"[^>]*href="([^"]*)".*/\1/' | head -1)
     
     if [ -z "$link" ]; then
-        # 备用方案：从文件名构建完整链接
-        local filename=$(echo "$page_content" | grep -o 'WeChatWin_[^"]*\.exe' | head -1)
+        # 备用方案1：直接搜索包含 WeChatWin_ 的完整 URL
+        link=$(echo "$page_content" | grep -oE 'https://dldir1v6\.qq\.com/weixin/Universal/Windows/WeChatWin_[^"]*\.exe' | head -1)
+    fi
+    
+    if [ -z "$link" ]; then
+        # 备用方案2：从文件名构建完整链接
+        local filename=$(echo "$page_content" | grep -oE 'WeChatWin_[0-9.]+\.exe' | head -1)
         if [ -n "$filename" ]; then
             link="https://dldir1v6.qq.com/weixin/Universal/Windows/$filename"
         fi
@@ -103,7 +108,26 @@ function extract_version() {
     printf "#%.0s" {1..60}
     echo 
     
-    # 解压安装包
+    # 方法0: 优先尝试从下载链接的文件名中提取版本号（最快速、最可靠）
+    # 新版本文件名格式：WeChatWin_4.1.6.exe 或 WeChatSetup.exe（旧格式）
+    if [ -n "$download_link" ]; then
+        >&2 echo -e "\033[1;33mMethod 0: Trying to extract version from download link...\033[0m"
+        # 从 URL 中提取文件名，然后提取版本号
+        local filename=$(echo "$download_link" | grep -oE '[^/]+\.exe$')
+        if [ -n "$filename" ]; then
+            # 匹配 WeChatWin_4.1.6.exe 或 WeChatWin_3.9.12.exe 等格式
+            # 支持格式：x.x.x 或 x.x.x.x
+            local extracted_version=$(echo "$filename" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
+            if [ -n "$extracted_version" ]; then
+                dest_version="$extracted_version"
+                >&2 echo -e "\033[1;32mExtracted version from download link: $dest_version\033[0m"
+                # 如果成功从下载链接提取版本号，直接返回，无需解压文件
+                return 0
+            fi
+        fi
+    fi
+    
+    # 解压安装包（如果需要使用其他方法）
     7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp
     
     # 方法1: 尝试从文件夹名中提取版本号（新版本格式：[x.x.x.x]）
