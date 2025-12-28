@@ -68,7 +68,7 @@ function login_gh() {
     echo -e "## \033[1;33mLogin to github to use github-cli...\033[0m"
     printf "#%.0s" {1..60}
     echo 
-    if [ -z $GHTOKEN ]; then
+    if [ -z "$GHTOKEN" ]; then
         >&2 echo -e "\033[1;31mMissing Github Token! Please get a GHToken from 'Github Settings->Developer settings->Personal access tokens' and set it in Repo Secrect\033[0m"
         exit 1
     fi
@@ -103,15 +103,33 @@ function extract_version() {
     printf "#%.0s" {1..60}
     echo 
     
-    # old version
-    #local outfile=`7z l ${temp_path}/WeChatSetup.exe | grep improve.xml | awk 'NR ==1 { print $NF }'`
-    ## 7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp "\$R5/Tencent/WeChat/improve.xml"
-    #7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp $outfile
-    # dest_version=`awk '/MinVersion/{ print $2 }' ${temp_path}/temp/$outfile | sed -e 's/^.*="//g' -e 's/".*$//g'`
-    
-    # new version
+    # 解压安装包
     7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp
-    dest_version=`ls -l ${temp_path}/temp | awk '{print $9}' | grep '^\[[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\]$' | sed -e 's/^\[//g' -e 's/\]$//g'`
+    
+    # 方法1: 尝试从文件夹名中提取版本号（新版本格式：[x.x.x.x]）
+    dest_version=$(find ${temp_path}/temp -maxdepth 1 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
+    
+    # 方法2: 如果方法1失败，尝试从 improve.xml 中提取（旧版本方法）
+    if [ -z "$dest_version" ]; then
+        >&2 echo -e "\033[1;33mMethod 1 failed, trying method 2: extract from improve.xml...\033[0m"
+        local outfile=$(7z l ${temp_path}/WeChatSetup.exe | grep improve.xml | awk 'NR ==1 { print $NF }')
+        if [ -n "$outfile" ]; then
+            7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp "$outfile" 2>/dev/null || true
+            if [ -f "${temp_path}/temp/$outfile" ]; then
+                dest_version=$(awk '/MinVersion/{ print $2 }' "${temp_path}/temp/$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
+            fi
+        fi
+    fi
+    
+    # 如果还是失败，报错
+    if [ -z "$dest_version" ]; then
+        >&2 echo -e "\033[1;31mFailed to extract version number!\033[0m"
+        >&2 echo -e "\033[1;33mDebug: Listing extracted files:\033[0m"
+        >&2 ls -la ${temp_path}/temp/ || true
+        exit 1
+    fi
+    
+    >&2 echo -e "\033[1;32mExtracted version: $dest_version\033[0m"
 }
 
 
