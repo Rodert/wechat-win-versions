@@ -9,7 +9,7 @@ jobs:
   notify_to_tg:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Check new version and push
         env: 
           GHTOKEN: ${{ secrets.GHTOKEN }}
