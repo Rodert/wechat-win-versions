@@ -31,3 +31,5 @@ Temporary Items
 
 # Project runtime artifacts
 WeChatSetup/
+.codex
+.codex/
