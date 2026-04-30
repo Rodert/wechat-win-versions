@@ -12,6 +12,9 @@ on:
         description: 'The manual WechatSetup.exe download link (leave empty to auto-fetch from https://pc.weixin.qq.com/)'
         required: false
 
+permissions:
+  contents: write
+
 jobs:
   save_new_wechat:
     runs-on: ubuntu-latest
@@ -19,7 +22,12 @@ jobs:
       - uses: actions/checkout@v4
       # - name: Test Github Action Server Time
       #   run: echo `date`
+      - name: Install 7-Zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
       - name: Check new version and push
         env: 
-          GHTOKEN: ${{ secrets.GHTOKEN }}
-        run: bash -x ./scripts/destVersionRelease.sh ${{ github.event.inputs.download_link || '' }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOWNLOAD_LINK: ${{ github.event.inputs.download_link || '' }}
+        run: bash -x ./scripts/destVersionRelease.sh

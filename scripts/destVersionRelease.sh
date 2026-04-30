@@ -1,265 +1,243 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -Eeuo pipefail
 
 temp_path="WeChatSetup/temp"
-latest_path="WeChatSetup/latest"
+installer_path="${temp_path}/WeChatSetup.exe"
+release_dir=""
+dest_version=""
+download_link="${1:-${DOWNLOAD_LINK:-}}"
+official_last_modified=""
+now_sum256=""
+
+function section() {
+    >&2 printf "#%.0s" {1..60}
+    >&2 echo
+    >&2 echo -e "## \033[1;33m$1\033[0m"
+    >&2 printf "#%.0s" {1..60}
+    >&2 echo
+}
+
+function require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        >&2 echo -e "\033[1;31mMissing required command: $1\033[0m"
+        exit 1
+    fi
+}
 
 function get_download_link_from_official() {
-    >&2 printf "#%.0s" {1..60}
-    >&2 echo 
-    >&2 echo -e "## \033[1;33mFetching download link from https://pc.weixin.qq.com/\033[0m"
-    >&2 printf "#%.0s" {1..60}
-    >&2 echo 
-    
-    # 从官网获取64位版本的下载链接
-    local page_content=$(curl -s -L "https://pc.weixin.qq.com/")
-    if [ $? -ne 0 ]; then
-        >&2 echo -e "\033[1;31mFailed to fetch page from official website!\033[0m"
-        return 1
-    fi
-    
-    # 提取 id="downloadButton" 的 href 属性值（64位版本）
-    # 使用 sed -E 提取，兼容 macOS 和 Linux
-    local link=$(echo "$page_content" | grep -i 'id="downloadButton"' | sed -E 's/.*id="downloadButton"[^>]*href="([^"]*)".*/\1/' | head -1)
-    
+    section "Fetching download link from https://pc.weixin.qq.com/"
+
+    local page_content
+    page_content=$(curl -fsSL "https://pc.weixin.qq.com/")
+
+    local link
+    link=$(printf '%s' "$page_content" | grep -oE 'https://dldir1v6\.qq\.com/weixin/Universal/Windows/[^"'"'"'<>[:space:]]+\.exe' | head -1 || true)
+
     if [ -z "$link" ]; then
-        # 备用方案1：直接搜索包含 WeChatWin_ 的完整 URL
-        link=$(echo "$page_content" | grep -oE 'https://dldir1v6\.qq\.com/weixin/Universal/Windows/WeChatWin_[^"]*\.exe' | head -1)
+        link=$(printf '%s' "$page_content" | grep -i 'id="downloadButton"' | sed -E 's/.*id="downloadButton"[^>]*href="([^"]*)".*/\1/' | head -1 || true)
     fi
-    
+
     if [ -z "$link" ]; then
-        # 备用方案2：从文件名构建完整链接
-        local filename=$(echo "$page_content" | grep -oE 'WeChatWin_[0-9.]+\.exe' | head -1)
+        local filename
+        filename=$(printf '%s' "$page_content" | grep -oE 'WeChatWin_[0-9.]+\.exe' | head -1 || true)
         if [ -n "$filename" ]; then
             link="https://dldir1v6.qq.com/weixin/Universal/Windows/$filename"
         fi
     fi
-    
+
     if [ -z "$link" ]; then
         >&2 echo -e "\033[1;31mCould not extract download link from official website!\033[0m"
         return 1
     fi
-    
-    # 只输出 URL 到 stdout，其他信息都输出到 stderr
+
     echo "$link"
 }
 
-# 获取下载链接
-download_link="$1"
-if [ -z "$1" ]; then
-    >&2 echo -e "No download link provided. Fetching from official website..."
-    download_link=$(get_download_link_from_official)
-    if [ -z "$download_link" ]; then
-        >&2 echo -e "\033[1;31mFailed to get download link from official website!\033[0m"
-        exit 1
-    fi
-    >&2 echo -e "Download link: $download_link"
-fi
-
-function install_depends() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mInstalling 7zip, shasum, wget, curl, git\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
-
-    apt install -y p7zip-full p7zip-rar libdigest-sha-perl wget curl git
+function get_last_modified() {
+    curl -fsSIL "$download_link" \
+        | awk 'BEGIN { IGNORECASE=1 } /^last-modified:/ { sub(/\r$/, ""); sub(/^[^:]+:[[:space:]]*/, ""); value=$0 } END { print value }'
 }
 
 function login_gh() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mLogin to github to use github-cli...\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
-    if [ -z "$GHTOKEN" ]; then
-        >&2 echo -e "\033[1;31mMissing Github Token! Please get a GHToken from 'Github Settings->Developer settings->Personal access tokens' and set it in Repo Secrect\033[0m"
-        exit 1
+    section "Preparing GitHub authentication"
+
+    if [ -n "${GH_TOKEN:-}" ]; then
+        return 0
     fi
 
-    echo $GHTOKEN > WeChatSetup/temp/GHTOKEN
-    gh auth login --with-token < WeChatSetup/temp/GHTOKEN
-    if [ "$?" -ne 0 ]; then
-        >&2 echo -e "\033[1;31mLogin Failed, please check your network or token!\033[0m"
-        clean_data 1
+    if [ -n "${GHTOKEN:-}" ]; then
+        export GH_TOKEN="$GHTOKEN"
+        return 0
     fi
-    rm -rfv WeChatSetup/temp/GHTOKEN
+
+    if gh auth status >/dev/null 2>&1; then
+        return 0
+    fi
+
+    >&2 echo -e "\033[1;31mMissing GitHub token. Set GH_TOKEN or GHTOKEN.\033[0m"
+    exit 1
 }
 
 function download_wechat() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mDownloading the newest WechatSetup...\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
+    section "Downloading the newest WeChat installer"
 
-    wget "$download_link" -O ${temp_path}/WeChatSetup.exe
-    if [ "$?" -ne 0 ]; then
-        >&2 echo -e "\033[1;31mDownload Failed, please check your network!\033[0m"
-        clean_data 1
-    fi
+    mkdir -p "$temp_path"
+    curl -fL --retry 3 --retry-delay 5 "$download_link" -o "$installer_path"
+}
+
+function extract_version_from_dirs() {
+    local search_dir="$1"
+
+    find "$search_dir" -type d -printf '%f\n' \
+        | sed -nE 's/^\[?([0-9]+(\.[0-9]+){2,})\]?$/\1/p' \
+        | sort -V \
+        | tail -1
 }
 
 function extract_version() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mExtract WechatSetup, get the dest version of wechat\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
-    
-    # 方法0: 优先尝试从下载链接的文件名中提取版本号（最快速、最可靠）
-    # 新版本文件名格式：WeChatWin_4.1.6.exe 或 WeChatSetup.exe（旧格式）
-    if [ -n "$download_link" ]; then
-        >&2 echo -e "\033[1;33mMethod 0: Trying to extract version from download link...\033[0m"
-        # 从 URL 中提取文件名，然后提取版本号
-        local filename=$(echo "$download_link" | grep -oE '[^/]+\.exe$')
-        if [ -n "$filename" ]; then
-            # 匹配 WeChatWin_4.1.6.exe 或 WeChatWin_3.9.12.exe 等格式
-            # 支持格式：x.x.x 或 x.x.x.x
-            local extracted_version=$(echo "$filename" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)
-            if [ -n "$extracted_version" ]; then
-                dest_version="$extracted_version"
-                >&2 echo -e "\033[1;32mExtracted version from download link: $dest_version\033[0m"
-                # 如果成功从下载链接提取版本号，直接返回，无需解压文件
-                return 0
-            fi
-        fi
+    section "Extracting the full internal WeChat version"
+
+    local exe_dir="${temp_path}/exe"
+    local install_dir="${temp_path}/install"
+    rm -rf "$exe_dir" "$install_dir"
+    mkdir -p "$exe_dir" "$install_dir"
+
+    7z x "$installer_path" "-o${exe_dir}" -y >/dev/null
+
+    if [ -f "${exe_dir}/install.7z" ]; then
+        7z x "${exe_dir}/install.7z" "-o${install_dir}" -y >/dev/null
+        dest_version=$(extract_version_from_dirs "$install_dir" || true)
     fi
-    
-    # 解压安装包（如果需要使用其他方法）
-    7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp
-    
-    # 方法1: 尝试从文件夹名中提取版本号（新版本格式：[x.x.x.x]）
-    dest_version=$(find ${temp_path}/temp -maxdepth 1 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
-    
-    # 方法2: 如果方法1失败，检查是否有 install.7z 文件，需要进一步解压
-    local temp2_created=false
-    if [ -z "$dest_version" ] && [ -f "${temp_path}/temp/install.7z" ]; then
-        >&2 echo -e "\033[1;33mMethod 1 failed, trying method 2: extract install.7z...\033[0m"
-        mkdir -p ${temp_path}/temp2
-        temp2_created=true
-        7z x ${temp_path}/temp/install.7z -o${temp_path}/temp2
-        # 从解压后的文件中查找版本号文件夹（在所有层级中查找，不仅仅是第一层）
-        dest_version=$(find ${temp_path}/temp2 -type d -name '\[*\]' | sed -e 's/.*\[\([0-9]*\.[0-9]*\.[0-9]*\.[0-9]*\)\].*/\1/' | head -1)
-        # 如果还没找到，尝试查找所有目录名包含版本号格式的
-        if [ -z "$dest_version" ]; then
-            dest_version=$(find ${temp_path}/temp2 -type d | grep -oE '\[?[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]?' | sed -e 's/\[//g' -e 's/\]//g' | head -1)
-        fi
-        # 调试输出：列出 temp2 目录结构
-        if [ -z "$dest_version" ]; then
-            >&2 echo -e "\033[1;33mDebug: Listing temp2 directory structure:\033[0m"
-            >&2 find ${temp_path}/temp2 -maxdepth 3 -type d | head -20 || true
-        fi
-    fi
-    
-    # 方法3: 如果方法2也失败，尝试从 7z 文件列表中查找包含版本号的路径
+
     if [ -z "$dest_version" ]; then
-        >&2 echo -e "\033[1;33mMethod 2 failed, trying method 3: search version in 7z file list...\033[0m"
-        # 从 7z 列表中查找包含版本号格式的路径
-        local version_path=$(7z l ${temp_path}/WeChatSetup.exe | grep -oE '\[?[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\]?' | head -1)
-        if [ -n "$version_path" ]; then
-            dest_version=$(echo "$version_path" | sed -e 's/\[//g' -e 's/\]//g')
-        fi
+        dest_version=$(extract_version_from_dirs "$exe_dir" || true)
     fi
-    
-    # 方法4: 如果方法3也失败，尝试从 improve.xml 中提取（旧版本方法）
+
     if [ -z "$dest_version" ]; then
-        >&2 echo -e "\033[1;33mMethod 3 failed, trying method 4: extract from improve.xml...\033[0m"
-        local outfile=$(7z l ${temp_path}/WeChatSetup.exe | grep improve.xml | awk 'NR ==1 { print $NF }')
-        if [ -n "$outfile" ]; then
-            7z x ${temp_path}/WeChatSetup.exe -o${temp_path}/temp "$outfile" 2>/dev/null || true
-            if [ -f "${temp_path}/temp/$outfile" ]; then
-                dest_version=$(awk '/MinVersion/{ print $2 }' "${temp_path}/temp/$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
-            fi
-        fi
-        # 如果在 install.7z 解压后的目录中查找 improve.xml 或其他 XML 文件
-        if [ -z "$dest_version" ] && [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
-            outfile=$(find ${temp_path}/temp2 -name "*.xml" | head -1)
-            if [ -n "$outfile" ] && [ -f "$outfile" ]; then
-                dest_version=$(awk '/MinVersion/{ print $2 }' "$outfile" | sed -e 's/^.*="//g' -e 's/".*$//g' | head -1)
-            fi
-        fi
+        dest_version=$(7z l "$installer_path" | grep -oE '\[?[0-9]+(\.[0-9]+){2,}\]?' | sed -e 's/\[//g' -e 's/\]//g' | sort -V | tail -1 || true)
     fi
-    
-    # 清理临时目录（在错误处理之前不要清理，以便调试）
-    # 如果成功提取到版本号，清理 temp2
-    if [ -n "$dest_version" ] && [ "$temp2_created" = true ] && [ -d "${temp_path}/temp2" ]; then
-        rm -rf ${temp_path}/temp2
+
+    if [ -z "$dest_version" ]; then
+        dest_version=$(printf '%s' "$download_link" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1 || true)
     fi
-    
-    # 如果还是失败，报错
+
     if [ -z "$dest_version" ]; then
         >&2 echo -e "\033[1;31mFailed to extract version number!\033[0m"
-        >&2 echo -e "\033[1;33mDebug: Listing extracted files in temp:\033[0m"
-        >&2 ls -la ${temp_path}/temp/ || true
-        if [ -d "${temp_path}/temp2" ]; then
-            >&2 echo -e "\033[1;33mDebug: Listing temp2 directory tree (first 50 lines):\033[0m"
-            >&2 find ${temp_path}/temp2 -type f -o -type d | head -50 || true
-            >&2 echo -e "\033[1;33mDebug: Looking for version patterns in temp2:\033[0m"
-            >&2 find ${temp_path}/temp2 -type d | grep -E '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -10 || true
-            rm -rf ${temp_path}/temp2
-        fi
+        >&2 find "$temp_path" -maxdepth 3 -type d -print || true
         exit 1
     fi
-    
+
     >&2 echo -e "\033[1;32mExtracted version: $dest_version\033[0m"
 }
 
+function latest_release_sha() {
+    local body
+    if ! body=$(gh release view --json body --jq ".body" 2>/dev/null); then
+        echo ""
+        return 0
+    fi
 
-# rename and replace
-function prepare_commit() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mPrepare to commit new version\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
+    printf '%s\n' "$body" | awk 'BEGIN { IGNORECASE=1 } /^sha256[[:space:]]*:/ { print $2; exit }'
+}
 
-    mkdir -p WeChatSetup/$dest_version
-    cp $temp_path/WeChatSetup.exe WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe
-    echo "DestVersion: $dest_version" > WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe.sha256
-    echo "Sha256: $now_sum256" >> WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe.sha256
-    echo "UpdateTime: $(date -u '+%Y-%m-%d %H:%M:%S') (UTC)" >> WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe.sha256
-    echo "DownloadFrom: $download_link" >> WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe.sha256
-    
+function release_sha_for_version() {
+    local body
+    if ! body=$(gh release view "v${dest_version}" --json body --jq ".body" 2>/dev/null); then
+        echo ""
+        return 0
+    fi
+
+    printf '%s\n' "$body" | awk 'BEGIN { IGNORECASE=1 } /^sha256[[:space:]]*:/ { print $2; exit }'
+}
+
+function prepare_release() {
+    section "Preparing release files"
+
+    release_dir="WeChatSetup/${dest_version}"
+    mkdir -p "$release_dir"
+
+    local asset_path="${release_dir}/WeChatSetup-${dest_version}.exe"
+    local note_path="${release_dir}/WeChatSetup-${dest_version}.exe.sha256"
+
+    cp "$installer_path" "$asset_path"
+
+    {
+        echo "Version: $dest_version"
+        echo "DestVersion: $dest_version"
+        echo "Download URL: $download_link"
+        echo "DownloadFrom: $download_link"
+        echo "SHA256: $now_sum256"
+        echo "Sha256: $now_sum256"
+        echo "Last Modified: $official_last_modified"
+        echo "UpdateTime: $(date -u '+%Y-%m-%d %H:%M:%S') (UTC)"
+    } > "$note_path"
+}
+
+function publish_release() {
+    section "Publishing GitHub release v${dest_version}"
+
+    local asset_path="${release_dir}/WeChatSetup-${dest_version}.exe"
+    local note_path="${release_dir}/WeChatSetup-${dest_version}.exe.sha256"
+
+    if gh release view "v${dest_version}" >/dev/null 2>&1; then
+        gh release upload "v${dest_version}" "$asset_path" --clobber
+        gh release edit "v${dest_version}" -F "$note_path" -t "Wechat v${dest_version}"
+    else
+        gh release create "v${dest_version}" "$asset_path" -F "$note_path" -t "Wechat v${dest_version}"
+    fi
 }
 
 function clean_data() {
-    printf "#%.0s" {1..60}
-    echo 
-    echo -e "## \033[1;33mClean runtime and exit...\033[0m"
-    printf "#%.0s" {1..60}
-    echo 
-
-    rm -rfv WeChatSetup/*
-    exit $1
+    section "Cleaning runtime files"
+    rm -rf "$temp_path"
+    if [ -n "$release_dir" ]; then
+        rm -rf "$release_dir"
+    fi
 }
 
 function main() {
-    # rm -rfv WeChatSetup/*
-    mkdir -p ${temp_path}/temp
+    require_command curl
+    require_command gh
+    require_command 7z
+    require_command sha256sum
+
+    if [ -z "$download_link" ]; then
+        >&2 echo "No download link provided. Fetching from official website..."
+        download_link=$(get_download_link_from_official)
+    fi
+
+    >&2 echo "Download link: $download_link"
+    official_last_modified=$(get_last_modified || true)
+    >&2 echo "Last-Modified: ${official_last_modified:-unknown}"
+
     login_gh
-    ## https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md
-    # install_depends
     download_wechat
 
-    now_sum256=`shasum -a 256 ${temp_path}/WeChatSetup.exe | awk '{print $1}'`
-    local latest_sum256=`gh release view  --json body --jq ".body" | awk '/Sha256/{ print $2 }'`
+    now_sum256=$(sha256sum "$installer_path" | awk '{print $1}')
+    >&2 echo "SHA256: $now_sum256"
 
-    if [ "$now_sum256" = "$latest_sum256" ]; then
-        >&2 echo -e "\n\033[1;32mThis is the newest Version!\033[0m\n"
-        clean_data 0
+    local latest_sum256
+    latest_sum256=$(latest_release_sha)
+    if [ -n "$latest_sum256" ] && [ "$now_sum256" = "$latest_sum256" ]; then
+        >&2 echo -e "\n\033[1;32mThis is the newest version by SHA256.\033[0m\n"
+        clean_data
+        exit 0
     fi
-    ## if not the newest
+
     extract_version
-    prepare_commit
 
-    gh release create v$dest_version ./WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe -F ./WeChatSetup/$dest_version/WeChatSetup-$dest_version.exe.sha256 -t "Wechat v$dest_version"
+    local version_sum256
+    version_sum256=$(release_sha_for_version)
+    if [ -n "$version_sum256" ] && [ "$now_sum256" = "$version_sum256" ]; then
+        >&2 echo -e "\n\033[1;32mv${dest_version} already exists with the same SHA256.\033[0m\n"
+        clean_data
+        exit 0
+    fi
 
-    gh auth logout --hostname github.com | echo "y"
-
-    clean_data 0
+    prepare_release
+    publish_release
+    clean_data
 }
 
 main
-
