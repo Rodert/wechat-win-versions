@@ -265,7 +265,7 @@
 
         <div class="terminal">
             <div class="prompt">$</div>
-            <div class="command">curl -s https://api.github.com/repos/Rodert/wechat-win-versions/releases</div>
+            <div class="command">cat ./releases.json</div>
             <div class="output" id="loading">
                 <span class="loading">正在获取版本列表...</span>
             </div>
@@ -301,12 +301,11 @@
     </div>
 
     <script>
-        const repo = 'Rodert/wechat-win-versions';
-        const apiUrl = `https://api.github.com/repos/${repo}/releases`;
+        const releasesUrl = './releases.json';
 
         async function fetchReleases() {
             try {
-                const response = await fetch(apiUrl);
+                const response = await fetch(releasesUrl, { cache: 'no-store' });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -405,4 +404,3 @@
     </script>
 </body>
 </html>
-

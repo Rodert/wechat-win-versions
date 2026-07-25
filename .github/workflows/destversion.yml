@@ -6,6 +6,8 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - releases.json
   workflow_dispatch:
     inputs:
       download_link:
@@ -31,3 +33,24 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOWNLOAD_LINK: ${{ github.event.inputs.download_link || '' }}
         run: bash -x ./scripts/destVersionRelease.sh
+      - name: Generate release cache
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            });
+            fs.writeFileSync('releases.json', `${JSON.stringify(releases, null, 2)}\n`);
+      - name: Commit release cache
+        run: |
+          if git diff --quiet -- releases.json; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add releases.json
+          git commit -m 'chore: update release cache'
+          git push
