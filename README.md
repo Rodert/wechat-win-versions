@@ -41,3 +41,9 @@ GitHub Pages 在线版本下载页面：访问仓库的 GitHub Pages（需要在
 - 自媒体：[JavaPub](https://github.com/Rodert) | 仕宇2046
 
 如有问题或侵权，请直接提交 issue 告知。
+
+## 推荐站点
+
+- [Codex 中文网](https://codex-zh.com/)
+- [在线生图、在线生视频](https://app.codex-zh.com/)
+- [AICoding](https://chongplus.plus/)
