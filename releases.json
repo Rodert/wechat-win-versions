@@ -68,7 +68,7 @@
         "state": "uploaded",
         "size": 250237096,
         "digest": "sha256:58997cfe4513ab71f107c2137bb570ade030f228115c14688544cec80e604053",
-        "download_count": 9,
+        "download_count": 11,
         "created_at": "2026-07-27T10:32:00Z",
         "updated_at": "2026-07-27T10:32:08Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.12.26/WeChatSetup-4.1.12.26.exe"
@@ -226,7 +226,7 @@
         "state": "uploaded",
         "size": 240291184,
         "digest": "sha256:c3032fedf2e4025bf7ef87504fd98e46d0fd6db4e5e82ea3d1d0b70e85143cd0",
-        "download_count": 28,
+        "download_count": 30,
         "created_at": "2026-07-17T09:03:03Z",
         "updated_at": "2026-07-17T09:03:11Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.11.55/WeChatSetup-4.1.11.55.exe"
@@ -542,7 +542,7 @@
         "state": "uploaded",
         "size": 239915224,
         "digest": "sha256:ef1130ef1a07092f7606089d4052393d1e26b1cd7ee74a82aab74cab6f487bff",
-        "download_count": 88,
+        "download_count": 94,
         "created_at": "2026-06-12T10:56:21Z",
         "updated_at": "2026-06-12T10:56:31Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.10.53/WeChatSetup-4.1.10.53.exe"
@@ -621,7 +621,7 @@
         "state": "uploaded",
         "size": 239404080,
         "digest": "sha256:62b1e23decaa358398b7863d1528696af0aeb8a75cb99d250793aac705c5e312",
-        "download_count": 37,
+        "download_count": 39,
         "created_at": "2026-06-08T11:48:58Z",
         "updated_at": "2026-06-08T11:49:05Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.10.31/WeChatSetup-4.1.10.31.exe"
@@ -700,7 +700,7 @@
         "state": "uploaded",
         "size": 239441904,
         "digest": "sha256:54203fc2b41983fa106b0af0d67f86befc56ccd3dc1005d4bab6de8ea36b4f74",
-        "download_count": 111,
+        "download_count": 112,
         "created_at": "2026-05-29T10:38:20Z",
         "updated_at": "2026-05-29T10:38:30Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.10.27/WeChatSetup-4.1.10.27.exe"
@@ -779,7 +779,7 @@
         "state": "uploaded",
         "size": 239385936,
         "digest": "sha256:72200e92091da921fb9520d72db5a4fe7065839baab1e0aeabca1d88ee4539e1",
-        "download_count": 57,
+        "download_count": 62,
         "created_at": "2026-05-28T10:50:07Z",
         "updated_at": "2026-05-28T10:50:14Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.10.24/WeChatSetup-4.1.10.24.exe"
@@ -858,7 +858,7 @@
         "state": "uploaded",
         "size": 234965064,
         "digest": "sha256:8f43225b7388742a9797d31960bf19d6b0902ea58bf1a85b6d8b95d0b71877ed",
-        "download_count": 140,
+        "download_count": 149,
         "created_at": "2026-05-20T10:19:03Z",
         "updated_at": "2026-05-20T10:19:11Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.9.57/WeChatSetup-4.1.9.57.exe"
@@ -937,7 +937,7 @@
         "state": "uploaded",
         "size": 234984904,
         "digest": "sha256:eec04e78b3ac88840f2614c69c946586d1d5a33060d70c6e13a26eab50de6547",
-        "download_count": 63,
+        "download_count": 65,
         "created_at": "2026-05-15T09:46:38Z",
         "updated_at": "2026-05-15T09:46:46Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.9.55/WeChatSetup-4.1.9.55.exe"
@@ -1174,7 +1174,7 @@
         "state": "uploaded",
         "size": 234414200,
         "digest": "sha256:bb5a372f1a4622d4d9eeb738eac05f6c1a22ef528b94458bbbb292f0ec247d27",
-        "download_count": 191,
+        "download_count": 192,
         "created_at": "2026-04-22T08:24:55Z",
         "updated_at": "2026-04-22T08:25:01Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.9/WeChatSetup-4.1.9.exe"
@@ -1253,7 +1253,7 @@
         "state": "uploaded",
         "size": 232747656,
         "digest": "sha256:55bbdca56f2e931e6958f99446cc893c5bbf4a60370f7133afe29e135d52d14b",
-        "download_count": 849,
+        "download_count": 870,
         "created_at": "2026-03-14T07:30:05Z",
         "updated_at": "2026-03-14T07:30:10Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.8/WeChatSetup-4.1.8.exe"
@@ -1332,7 +1332,7 @@
         "state": "uploaded",
         "size": 235986936,
         "digest": "sha256:25276e4325d3eb386dabfeed471ea4daa9187b45a34545f33bc5fe46626bd56c",
-        "download_count": 8070,
+        "download_count": 8199,
         "created_at": "2026-01-29T07:34:41Z",
         "updated_at": "2026-01-29T07:34:50Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.7/WeChatSetup-4.1.7.exe"
@@ -1490,7 +1490,7 @@
         "state": "uploaded",
         "size": 230232232,
         "digest": "sha256:30bcfd5831f08cae1ecbdcb04189c9fd5685995236633a9a7e32e2b160df8ded",
-        "download_count": 1780,
+        "download_count": 1794,
         "created_at": "2026-01-07T07:19:06Z",
         "updated_at": "2026-01-07T07:19:14Z",
         "browser_download_url": "https://github.com/Rodert/wechat-win-versions/releases/download/v4.1.6/WeChatSetup-4.1.6.exe"
