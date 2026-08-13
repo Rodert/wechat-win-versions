@@ -4,8 +4,10 @@
 
 为避免项目和数据被和谐，且用且珍惜。
 
+- [点击下载 Android 微信历史版本](https://github.com/Rodert/wechat-android-versions)
 - [点击下载 Windows 微信历史版本](https://github.com/Rodert/wechat-win-versions)
 - [点击下载 Mac 微信历史版本](https://github.com/Rodert/wechat-mac-versions)
+- [点击下载 Linux 微信历史版本](https://github.com/Rodert/wechat-linux-versions)
 
 ## 项目简介
 
